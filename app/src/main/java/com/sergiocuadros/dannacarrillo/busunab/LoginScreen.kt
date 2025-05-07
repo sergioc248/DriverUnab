@@ -22,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,7 +60,9 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
     var emailError by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf("") }
 
-    Scaffold { innerPadding ->
+    Scaffold(
+        containerColor = Color(0xFF00B2F3) // Fondo azul brillante
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
@@ -68,21 +71,31 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
                 .fillMaxSize()
                 .padding(horizontal = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
+            Spacer(modifier = Modifier.height(80.dp)) // Espacio arriba del logo
+
             Image(
-                painter = painterResource(R.drawable.logo_unab_vert),
+                painter = painterResource(R.drawable.logo_unab_blanco),
                 contentDescription = "Logo Unab",
-                modifier = Modifier.size(150.dp)
+                modifier = Modifier.size(200.dp) // Logo más grande
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(60.dp)) // Debajo del logo
 
             Text(
-                text = "Iniciar Sesión",
-                fontSize = 24.sp,
-                color = Color(0xFFFF9900),
-                fontWeight = FontWeight.Bold
+                text = "INICIO DE SESIÓN",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold, // Más grueso
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "¡Bienvenido de vuelta!",
+                fontSize = 14.sp,
+                color = Color.White
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -90,67 +103,51 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
             OutlinedTextField(
                 value = inputEmail,
                 onValueChange = { inputEmail = it },
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Email,
-                        contentDescription = "Email",
-                        tint = Color(0xFFFF9900)
-                    )
-                },
-                label = {
-                    Text(text = "Correo Electrónico")
-                },
-                shape = RoundedCornerShape(12.dp),
-                supportingText = {
-                    if (emailError.isNotEmpty()) {
-                        Text(
-                            text = emailError,
-                            color = Color.Red
-                        )
-                    }
-                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(8.dp),
+                placeholder = { Text("Email", color = Color.Gray) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    disabledContainerColor = Color.White,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent
+                ),
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
-                    autoCorrectEnabled = false,
+                    autoCorrect = false,
                     keyboardType = KeyboardType.Email
                 )
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(12.dp)) // Inputs más juntos
 
             OutlinedTextField(
                 value = inputPassword,
                 onValueChange = { inputPassword = it },
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = "Email",
-                        tint = Color(0xFFFF9900)
-                    )
-                },
-                label = {
-                    Text(text = "Contraseña")
-                },
-                shape = RoundedCornerShape(12.dp),
-                supportingText = {
-                    if (passwordError.isNotEmpty()) {
-                        Text(
-                            text = passwordError,
-                            color = Color.Red
-                        )
-                    }
-                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(8.dp),
+                placeholder = { Text("Password", color = Color.Gray) },
                 visualTransformation = PasswordVisualTransformation(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    disabledContainerColor = Color.White,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent
+                ),
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
-                    autoCorrectEnabled = false,
+                    autoCorrect = false,
                     keyboardType = KeyboardType.Password
                 )
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(64.dp)) // Más espacio antes del botón (estaba en 24.dp)
 
             if (loginError.isNotEmpty()) {
                 Text(
@@ -172,7 +169,6 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
                     if (isValidEmail && isValidPassword) {
                         auth.signInWithEmailAndPassword(inputEmail, inputPassword)
                             .addOnCompleteListener(activity) { task ->
-
                                 if (task.isSuccessful) {
                                     onSuccesfulLogin()
                                 } else {
@@ -184,25 +180,27 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
                                 }
                             }
                     }
-
-
-                }, modifier = Modifier
+                },
+                modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9900))
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0076A5))
             ) {
-                Text("Iniciar Sesión")
+                Text("Iniciar Sesión", color = Color.White)
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // Justo debajo del botón
 
             TextButton(onClick = onClickRegister) {
                 Text(
-                    text = "¿No tienes una cuenta? Regístrate",
-                    color = Color(0xFFFF9900)
+                    text = "¿Te olvidaste de tu contraseña?",
+                    color = Color.White,
+                    fontSize = 14.sp
                 )
             }
+
+            Spacer(modifier = Modifier.height(40.dp)) // Espacio inferior para respiración
         }
     }
 }
