@@ -1,7 +1,9 @@
 package com.sergiocuadros.dannacarrillo.busunab
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -32,17 +35,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavigationBar
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.TopNavigationBar
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.geometry.Offset
+
+private val LightBlue = Color(0xFFE5F7FF)
+private val DarkBlue  = Color(0xFF009FE3)
 
 @Composable
 fun BusManagementScreen() {
     val busList = listOf(
         BusData("1", "QWE-321", "16", "6:00 am"),
         BusData("2", "QWE-321", "32", "6:00 am"),
-        BusData("2", "QWE-321", "32", "6:00 am")
+        BusData("3", "QWE-321", "32", "6:00 am")
     )
 
     Scaffold(
-        topBar = { TopNavigationBar(userName = "admin1") },
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopNavigationBar(
+                headerTitle = "Panel de Administración",
+                userName = "admin1",
+            )
+        },
         bottomBar = {
             BottomNavigationBar()
         }
@@ -52,61 +69,47 @@ fun BusManagementScreen() {
                 .padding(innerPadding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .background(LightBlue)
+                .padding(16.dp) // Outer margin for the table
         ) {
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Table Container
             Column(
                 modifier = Modifier
-                    .padding(16.dp)
                     .fillMaxWidth()
-                    .background(Color(0xFFE5F7FF), shape = RoundedCornerShape(12.dp))
-                    .padding(16.dp)
+                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .padding(12.dp)
             ) {
                 Text(
                     text = "Gestión de Buses",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = Color(0xFF009FE3)
+                    color = DarkBlue,
                 )
                 Text(
                     text = "Agrega, edita o elimina buses",
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                // Header row
+                TableRow(
+                    cells = listOf("Ruta", "Placa", "Capacidad", "Inicio"),
+                    isHeader = true
+                )
 
-                // Table Header
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    TableHeader("Ruta", Modifier.weight(1f))
-                    TableHeader("Placa", Modifier.weight(1f))
-                    TableHeader("Capacidad", Modifier.weight(1f))
-                    TableHeader("Inicio", Modifier.weight(1f))
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Table Rows
+                // Data rows
                 busList.forEach {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        TableCell(it.route, Modifier.weight(1f))
-                        TableCell(it.plate, Modifier.weight(1f))
-                        TableCell(it.capacity, Modifier.weight(1f))
-                        TableCell(it.startTime, Modifier.weight(1f))
-                    }
+                    TableRow(
+                        cells = listOf(it.route, it.plate, it.capacity, it.startTime)
+                    )
                 }
 
-                // Empty Rows (to match image layout)
+                // Fill remaining space with empty rows
                 repeat(7) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        repeat(4) {
-                            TableCell("", Modifier.weight(1f))
-                        }
-                    }
+                    TableRow(cells = listOf("", "", "", ""))
                 }
             }
         }
@@ -114,12 +117,59 @@ fun BusManagementScreen() {
 }
 
 @Composable
+fun TableRow(cells: List<String>, isHeader: Boolean = false) {
+    val cellColor = if (isHeader) DarkBlue else Color.Black
+    val fontWeight = if (isHeader) FontWeight.Bold else FontWeight.Normal
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+    ) {
+        cells.forEachIndexed { index, cell ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(4.dp)
+            ) {
+                Text(
+                    text = cell,
+                    fontSize = 14.sp,
+                    color = cellColor,
+                    fontWeight = fontWeight,
+                    modifier = Modifier.align(Alignment.CenterStart).padding(8.dp)
+                )
+            }
+
+            // Draw vertical divider (except after last column)
+            if (index != cells.lastIndex) {
+                VerticalDivider(
+                    color = DarkBlue,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(1.dp)
+                )
+            }
+        }
+    }
+
+    // Draw horizontal divider
+    HorizontalDivider(
+        modifier = Modifier.fillMaxWidth(),
+        thickness = 1.dp,
+        color = DarkBlue
+    )
+}
+
+
+@Composable
 fun TableHeader(title: String, modifier: Modifier) {
     Text(
         text = title,
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
-        modifier = modifier
+        modifier = modifier.padding(8.dp)
     )
 }
 
@@ -128,17 +178,10 @@ fun TableCell(text: String, modifier: Modifier) {
     Text(
         text = text,
         fontSize = 14.sp,
-        modifier = modifier
+        modifier = modifier.padding(8.dp)
     )
 }
 
-@Composable
-fun IconWithText(icon: ImageVector, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, contentDescription = label, tint = Color.White)
-        Text(label, color = Color.White, fontSize = 12.sp)
-    }
-}
 
 data class BusData(
     val route: String,
