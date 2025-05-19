@@ -40,6 +40,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.res.stringResource
+import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavItem
 
 private val LightBlue = Color(0xFFE5F7FF)
 private val DarkBlue  = Color(0xFF009FE3)
@@ -61,7 +63,12 @@ fun BusManagementScreen() {
             )
         },
         bottomBar = {
-            BottomNavigationBar()
+            BottomNavigationBar(items = listOf(
+                BottomNavItem.PainterIcon(
+                    painter = painterResource(R.drawable.icon_log_out),
+                    label = stringResource(R.string.log_out_icon_text)
+                )
+            ))
         }
     ) { innerPadding ->
         Column(

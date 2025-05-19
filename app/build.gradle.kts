@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.firebase.firestore)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -69,4 +70,18 @@ dependencies {
 
     // firebase libraries
     implementation(libs.firebase.auth)
+
+    // Guava dependency
+    implementation(libs.guava)
+
+    // CameraX core library
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    // Accompanist permissions for Compose
+    implementation(libs.accompanist.permissions)
+
+    // ComposeCharts library
+    implementation("io.github.ehsannarmani:compose-charts:0.1.7")
+
 }

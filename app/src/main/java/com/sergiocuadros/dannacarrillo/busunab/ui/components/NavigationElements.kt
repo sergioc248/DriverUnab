@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -19,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -66,11 +68,25 @@ fun TopNavigationBar(
     }
 }
 
+sealed class BottomNavItem {
+    data class VectorIcon(
+        val icon: ImageVector,
+        val label: String,
+        val modifier: Modifier = Modifier
+    ) : BottomNavItem()
+
+    data class PainterIcon(
+        val painter: Painter,
+        val label: String,
+        val modifier: Modifier = Modifier
+    ) : BottomNavItem()
+}
+
 @Composable
-fun BottomNavigationBar() {
+fun BottomNavigationBar(items: List<BottomNavItem>) {
     val baseHeight = 80f
     val scaleFactor = BottomBarHeight.value / baseHeight
-    val iconSize = (24 * scaleFactor).dp
+    val iconSize = (32 * scaleFactor).dp
     val textSize = (12 * scaleFactor).sp
     val verticalPadding = (12 * scaleFactor).dp
 
@@ -83,22 +99,75 @@ fun BottomNavigationBar() {
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconWithText(Icons.AutoMirrored.Filled.ArrowBack, "Cerrar\nsesión", iconSize, textSize)
-        IconWithText(Icons.Default.Clear, "Estadísticas", iconSize, textSize)
-        IconWithText(Icons.Default.Add, "Agregar\nbus", iconSize, textSize)
+        items.forEach { item ->
+            when (item) {
+                is BottomNavItem.VectorIcon -> {
+                    IconWithText(
+                        icon = item.icon,
+                        label = item.label,
+                        iconSize = iconSize,
+                        textSize = textSize,
+                        modifier = item.modifier
+                    )
+                }
+
+                is BottomNavItem.PainterIcon -> {
+                    IconWithText(
+                        painter = item.painter,
+                        label = item.label,
+                        iconSize = iconSize,
+                        textSize = textSize,
+                        modifier = item.modifier
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun IconWithText(icon: ImageVector, label: String, iconSize: Dp, textSize: androidx.compose.ui.unit.TextUnit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+fun IconWithText(
+    icon: ImageVector,
+    label: String,
+    iconSize: Dp,
+    textSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
             tint = Color.White,
             modifier = Modifier
-                .height(iconSize)
+                .size(iconSize)
                 .padding(bottom = 4.dp)
+                .then(modifier)
+        )
+        Text(label, color = Color.White, fontSize = textSize)
+    }
+}
+
+@Composable
+fun IconWithText(
+    painter: Painter,
+    label: String,
+    iconSize: Dp,
+    textSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            painter = painter,
+            contentDescription = label,
+            tint = Color.White,
+            modifier = Modifier
+                .size(iconSize)
+                .padding(bottom = 4.dp)
+                .then(modifier)
         )
         Text(label, color = Color.White, fontSize = textSize)
     }

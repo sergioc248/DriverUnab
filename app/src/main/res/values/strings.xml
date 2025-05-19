@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">DriverUnab</string>
+    <string name="log_out_icon_text">Cerrar Sesión</string>
 </resources>

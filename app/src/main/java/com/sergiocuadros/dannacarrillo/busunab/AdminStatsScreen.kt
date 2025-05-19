@@ -1,47 +1,68 @@
 package com.sergiocuadros.dannacarrillo.busunab
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavItem
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavigationBar
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.TopNavigationBar
+import com.sergiocuadros.dannacarrillo.busunab.ui.viewmodels.StatsViewModel
+import io.github.ehsannarmani.compose.charts.bar.BarChart
+import io.github.ehsannarmani.compose.charts.line.LineChart
+import io.github.ehsannarmani.compose.charts.line.LineChartData
+import io.github.ehsannarmani.compose.charts.line.LineChartItem
+import io.github.ehsannarmani.compose.charts.bar.BarChartItem
+
+// Data classes for our statistics
+data class StopFrequency(
+    val stopName: String,
+    val frequency: Int
+)
+
+data class PassengerFlow(
+    val hour: Int,
+    val passengerCount: Int
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminStatsScreen ()
-{
+fun AdminStatsScreen(
+    viewModel: StatsViewModel = hiltViewModel()
+) {
+    val stopFrequencies by viewModel.stopFrequencies.collectAsState()
+    val passengerFlow by viewModel.passengerFlow.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
     Scaffold(
-        topBar = { TopNavigationBar(
-            headerTitle = "Panel de Administración",
-            userName = "Admin1"
-        ) },
-        bottomBar = { BottomNavigationBar() }
+        topBar = { 
+            TopNavigationBar(
+                headerTitle = "Panel de Administración",
+                userName = "Admin1"
+            ) 
+        },
+        bottomBar = {  
+            BottomNavigationBar(items = listOf(
+                BottomNavItem.PainterIcon(
+                    painter = painterResource(R.drawable.icon_log_out),
+                    label = stringResource(R.string.log_out_icon_text)
+                )
+            ))
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -64,6 +85,22 @@ fun AdminStatsScreen ()
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(16.dp),
+                    color = Color(0xFF00AEEF)
+                )
+            }
+
+            error?.let { errorMessage ->
+                Text(
+                    text = errorMessage,
+                    color = Color.Red,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+
+            // Most Frequent Stops Chart
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -74,10 +111,30 @@ fun AdminStatsScreen ()
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Paradas más frecuentes", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(16.dp))
-                    TODO()
+                    if (stopFrequencies.isNotEmpty()) {
+                        BarChart(
+                            items = stopFrequencies.map { 
+                                BarChartItem(
+                                    label = it.stopName,
+                                    value = it.frequency.toFloat(),
+                                    color = Color(0xFF00AEEF)
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "No hay datos disponibles",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
                 }
             }
 
+            // Passenger Flow Chart
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -86,9 +143,29 @@ fun AdminStatsScreen ()
                 elevation = CardDefaults.cardElevation(4.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Afluencia", style = MaterialTheme.typography.titleMedium)
+                    Text("Afluencia por hora", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(16.dp))
-                    TODO()
+                    if (passengerFlow.isNotEmpty()) {
+                        LineChart(
+                            data = LineChartData(
+                                items = passengerFlow.map { 
+                                    LineChartItem(
+                                        x = it.hour.toFloat(),
+                                        y = it.passengerCount.toFloat()
+                                    )
+                                }
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "No hay datos disponibles",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
                 }
             }
 
@@ -108,6 +185,6 @@ fun AdminStatsScreen ()
 
 @Preview
 @Composable
-fun PreviewStatsScreen(){
+fun PreviewStatsScreen() {
     AdminStatsScreen()
 }
