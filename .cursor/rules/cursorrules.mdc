@@ -1,0 +1,20 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- Don't make assumptions. 
+- Don't silently fix errors.
+- Use my existing theme for colors, typography and spacing.
+- Ask questions when uncertain about my code or design. 
+- Provide a list of tasks for accomplishing an implementation.
+- Always include a :) at the end of your response.
+
+## Technologies:
+ These are the technologies we are going to use for the features of this project:
+ 
+ - Jetpack Compose as UI system
+ - Material 3 as design system 
+ - Kotlin as programming language
+ - The ViewModels as Architecture Components for communication between the UI and the database layer 
+ - Firestore for the database

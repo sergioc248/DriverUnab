@@ -47,7 +47,10 @@ private val LightBlue = Color(0xFFE5F7FF)
 private val DarkBlue  = Color(0xFF009FE3)
 
 @Composable
-fun BusManagementScreen() {
+fun BusManagementScreen(
+    onNavigateToStats: () -> Unit,
+    onLogout: () -> Unit
+) {
     val busList = listOf(
         BusData("1", "QWE-321", "16", "6:00 am"),
         BusData("2", "QWE-321", "32", "6:00 am"),
@@ -66,7 +69,8 @@ fun BusManagementScreen() {
             BottomNavigationBar(items = listOf(
                 BottomNavItem.PainterIcon(
                     painter = painterResource(R.drawable.icon_log_out),
-                    label = stringResource(R.string.log_out_icon_text)
+                    label = stringResource(R.string.log_out_icon_text),
+                    onClick = onLogout
                 )
             ))
         }

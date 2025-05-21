@@ -2,6 +2,7 @@ package com.sergiocuadros.dannacarrillo.busunab.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -72,12 +73,14 @@ sealed class BottomNavItem {
     data class VectorIcon(
         val icon: ImageVector,
         val label: String,
+        val onClick: () -> Unit,
         val modifier: Modifier = Modifier
     ) : BottomNavItem()
 
     data class PainterIcon(
         val painter: Painter,
         val label: String,
+        val onClick: () -> Unit,
         val modifier: Modifier = Modifier
     ) : BottomNavItem()
 }
@@ -107,7 +110,7 @@ fun BottomNavigationBar(items: List<BottomNavItem>) {
                         label = item.label,
                         iconSize = iconSize,
                         textSize = textSize,
-                        modifier = item.modifier
+                        modifier = item.modifier.clickable { item.onClick() }
                     )
                 }
 
@@ -117,13 +120,14 @@ fun BottomNavigationBar(items: List<BottomNavItem>) {
                         label = item.label,
                         iconSize = iconSize,
                         textSize = textSize,
-                        modifier = item.modifier
+                        modifier = item.modifier.clickable { item.onClick() }
                     )
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun IconWithText(
