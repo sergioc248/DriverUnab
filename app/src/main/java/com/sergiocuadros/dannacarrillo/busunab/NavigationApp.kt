@@ -20,11 +20,12 @@ fun NavigationApp() {
     // TODO: Replace this with actual user role check from Firestore
     val isAdmin = currentUser?.email?.contains("admin") == true
 
-    startDestination = if (currentUser != null) {
-        if (isAdmin) "admin_stats" else "bus_view"
-    } else {
-        "login"
+    startDestination = when {
+        currentUser == null -> "login"
+        isAdmin -> "admin_stats"
+        else -> "bus_view"
     }
+
 
     NavHost(
         navController = navController,

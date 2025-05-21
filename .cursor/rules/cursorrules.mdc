@@ -18,3 +18,19 @@ alwaysApply: true
  - Kotlin as programming language
  - The ViewModels as Architecture Components for communication between the UI and the database layer 
  - Firestore for the database
+
+## Applicaton: 
+ The idea of the app is having an app for drivers of my university (unab) where they can log in, click on their bus to manage it, and add or remove students with face scan (checking if they belong on the university).
+you can also login if you are an admin user and access the dashboards to add or remove buses and statistics of the buses (stops, most used buses, etc).
+
+The face recognition is handled by an ec2 server I have spun up that can add faces to the servers known faces storage via http-request on #serverip/add-face and can verify that an image sent matches one in storage, via #serverip/verify 
+
+I'm using firebase with firestore and firebase auth
+
+## Applicaton: 
+ The idea of the app is having an app for drivers of my university (unab) where they can log in, click on their bus to manage it, and add or remove students with face scan (checking if they belong on the university).
+you can also login if you are an admin user and access the dashboards to add or remove buses and statistics of the buses (stops, most used buses, etc).
+
+The face recognition is handled by an ec2 server I have spun up that can add faces to the servers known faces storage via http-request on #serverip/add-face and can verify that an image sent matches one in storage, via #serverip/verify 
+
+I'm using firebase with firestore and firebase auth

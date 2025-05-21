@@ -5,7 +5,6 @@ data class User(
     val email: String = "",
     val name: String = "",
     val role: UserRole = UserRole.DRIVER,
-    val busPlate: String? = null
 )
 
 enum class UserRole {

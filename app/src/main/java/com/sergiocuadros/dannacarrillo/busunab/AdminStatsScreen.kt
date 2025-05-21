@@ -20,7 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavItem
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavigationBar
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.TopNavigationBar
-import com.sergiocuadros.dannacarrillo.busunab.ui.viewmodels.StatsViewModel
+import com.sergiocuadros.dannacarrillo.busunab.viewmodels.StatsViewModel
 import io.github.ehsannarmani.compose.charts.bar.BarChart
 import io.github.ehsannarmani.compose.charts.line.LineChart
 import io.github.ehsannarmani.compose.charts.line.LineChartData

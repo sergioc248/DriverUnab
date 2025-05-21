@@ -1,7 +1,12 @@
 package com.sergiocuadros.dannacarrillo.busunab
 
 import android.Manifest
+import android.content.Context
+import android.graphics.Bitmap
+import android.util.Log
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -9,26 +14,15 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,10 +32,14 @@ import androidx.core.content.ContextCompat
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import com.sergiocuadros.dannacarrillo.busunab.repository.FaceRecognitionService
+import com.sergiocuadros.dannacarrillo.busunab.repository.LogRepository
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavItem
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavigationBar
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.TopNavigationBar
 import androidx.compose.ui.tooling.preview.Preview as ComposePreview
+import java.io.ByteArrayOutputStream
+import java.util.concurrent.Executor
 
 @OptIn(ExperimentalPermissionsApi::class)
 @ComposePreview
@@ -58,6 +56,12 @@ fun ScanScreen(
 
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     val cameraError = remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
+    var isProcessing by remember { mutableStateOf(false) }
+    var capturedImage by remember { mutableStateOf<Bitmap?>(null) }
 
     Scaffold(
         topBar = {
@@ -79,7 +83,7 @@ fun ScanScreen(
                         painter = painterResource(R.drawable.icon_user),
                         label = "Reconocimiento Facial",
                         modifier = Modifier.clickable { selectedMode = 0 },
-                                onClick = onBusView
+                        onClick = onBusView
                     )
                 )
             )
@@ -89,7 +93,7 @@ fun ScanScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .background(Color(0xFFB3E6FF)), // Light blue background
+                .background(Color(0xFFB3E6FF)),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -104,7 +108,23 @@ fun ScanScreen(
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
                     .aspectRatio(3f / 4f)
-                    .border(width = 2.dp, color = Color.White),
+                    .border(width = 2.dp, color = Color.White)
+                    .clickable(enabled = !isProcessing) {
+                        if (selectedMode == 0 && !isProcessing) {
+                            captureImage(context, imageCapture) { bitmap ->
+                                capturedImage = bitmap
+                                processImage(bitmap, context) { success, identity ->
+                                    if (success) {
+                                        LogRepository.registerLog(
+                                            busId = userName,
+                                            wasVerified = true,
+                                            action = "face_verified"
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 if (cameraPermissionState.status.isGranted) {
@@ -118,13 +138,19 @@ fun ScanScreen(
                                     val preview = Preview.Builder().build().also {
                                         it.surfaceProvider = previewView.surfaceProvider
                                     }
+
+                                    imageCapture = ImageCapture.Builder()
+                                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                                        .build()
+
                                     val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
                                     try {
                                         cameraProvider.unbindAll()
                                         cameraProvider.bindToLifecycle(
-                                            ctx as androidx.lifecycle.LifecycleOwner,
+                                            lifecycleOwner,
                                             cameraSelector,
-                                            preview
+                                            preview,
+                                            imageCapture
                                         )
                                     } catch (exc: Exception) {
                                         cameraError.value =
@@ -168,7 +194,15 @@ fun ScanScreen(
                         )
                     }
                 }
-                // Overlay icon (user or qr)
+
+                if (isProcessing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(Color.Black.copy(alpha = 0.5f))
+                    )
+                }
+
                 Image(
                     painter = painterResource(id = overlayIcon),
                     contentDescription = overlayDesc,
@@ -180,4 +214,48 @@ fun ScanScreen(
             Spacer(modifier = Modifier.weight(1f))
         }
     }
+}
+
+private fun captureImage(
+    context: Context,
+    imageCapture: ImageCapture?,
+    onImageCaptured: (Bitmap) -> Unit
+) {
+    val executor = ContextCompat.getMainExecutor(context)
+
+    imageCapture?.takePicture(
+        executor,
+        object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureSuccess(image: androidx.camera.core.ImageProxy) {
+                val bitmap = image.toBitmap()
+                onImageCaptured(bitmap)
+                image.close()
+            }
+
+            override fun onError(exception: ImageCaptureException) {
+                Log.e("ScanScreen", "Error capturing image: ${exception.message}")
+            }
+        }
+    )
+}
+
+private fun processImage(
+    bitmap: Bitmap,
+    context: Context,
+    onResult: (Boolean, String?) -> Unit
+) {
+    val outputStream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+    val imageBytes = outputStream.toByteArray()
+
+    FaceRecognitionService.verifyFace(imageBytes) { matched, identity, _ ->
+        onResult(matched, identity)
+    }
+}
+
+private fun androidx.camera.core.ImageProxy.toBitmap(): Bitmap {
+    val buffer = planes[0].buffer
+    val bytes = ByteArray(buffer.remaining())
+    buffer.get(bytes)
+    return android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 }

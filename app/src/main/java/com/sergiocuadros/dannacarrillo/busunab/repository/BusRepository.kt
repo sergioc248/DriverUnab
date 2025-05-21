@@ -4,7 +4,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.sergiocuadros.dannacarrillo.busunab.Seat
 import com.sergiocuadros.dannacarrillo.busunab.models.Bus
 
-class FirestoreRepository {
+class BusRepository {
     private val db = FirebaseFirestore.getInstance()
     private val busesRef = db.collection("buses")
     private val seatsRef = db.collection("seats")

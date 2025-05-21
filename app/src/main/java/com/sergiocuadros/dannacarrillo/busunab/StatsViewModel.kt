@@ -1,4 +1,4 @@
-package com.sergiocuadros.dannacarrillo.busunab.ui.viewmodels
+package com.sergiocuadros.dannacarrillo.busunab.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

@@ -51,11 +51,13 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.firestore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(onClickBack: () -> Unit = {}, onSuccessfulRegister: () -> Unit = {}) {
     val auth = Firebase.auth
+    val db = Firebase.firestore
     val activity = LocalView.current.context as Activity
 
     // ESTADOS
@@ -271,6 +273,15 @@ fun RegisterScreen(onClickBack: () -> Unit = {}, onSuccessfulRegister: () -> Uni
                         auth.createUserWithEmailAndPassword(inputEmail, inputPassword)
                             .addOnCompleteListener(activity) { task ->
                                 if (task.isSuccessful) {
+                                    val user = auth.currentUser
+                                    user?.let {
+                                        val userDoc = hashMapOf(
+                                            "name" to inputName,
+                                            "email" to inputEmail,
+                                            "role" to "driver"
+                                        )
+                                        db.collection("users").document(it.uid).set(userDoc)
+                                    }
                                     onSuccessfulRegister()
                                 } else {
                                     registerError = when (task.exception) {
