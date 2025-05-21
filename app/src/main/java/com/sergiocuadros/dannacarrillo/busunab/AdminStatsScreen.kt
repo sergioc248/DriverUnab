@@ -41,6 +41,8 @@ data class PassengerFlow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminStatsScreen(
+    onNavigateToStats: () -> Unit,
+    onLogout: () -> Unit,
     viewModel: StatsViewModel = hiltViewModel()
 ) {
     val stopFrequencies by viewModel.stopFrequencies.collectAsState()
@@ -59,7 +61,8 @@ fun AdminStatsScreen(
             BottomNavigationBar(items = listOf(
                 BottomNavItem.PainterIcon(
                     painter = painterResource(R.drawable.icon_log_out),
-                    label = stringResource(R.string.log_out_icon_text)
+                    label = stringResource(R.string.log_out_icon_text),
+                    onClick = onLogout
                 )
             ))
         }

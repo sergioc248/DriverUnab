@@ -49,7 +49,8 @@ private val DarkBlue  = Color(0xFF009FE3)
 @Composable
 fun BusManagementScreen(
     onNavigateToStats: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onStatsBus: () ->Unit
 ) {
     val busList = listOf(
         BusData("1", "QWE-321", "16", "6:00 am"),
@@ -71,7 +72,14 @@ fun BusManagementScreen(
                     painter = painterResource(R.drawable.icon_log_out),
                     label = stringResource(R.string.log_out_icon_text),
                     onClick = onLogout
-                )
+                ),
+                BottomNavItem.PainterIcon(
+                    painter = painterResource(R.drawable.icon_log_out),
+                    label = "estadisticas",
+                    onClick = onStatsBus
+                ),
+
+
             ))
         }
     ) { innerPadding ->
@@ -201,10 +209,3 @@ data class BusData(
     val startTime: String
 )
 
-
-@Preview
-@Composable
-fun PreviewScreen()
-{
-    BusManagementScreen()
-}

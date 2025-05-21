@@ -35,11 +35,16 @@ data class Seat(
 
 @Composable
 fun BusSeatsScreen(
+    onNavigateToStats: () -> Unit,
+    onLogout: () -> Unit,
+    onBusView: () -> Unit,
+    onNavigateToScan: () -> Unit,
     busPlate: String,
     onSeatSelected: (Seat) -> Unit = {}
 ) {
     // TODO: Fetch bus data from ViewModel/Repository using busPlate
     val capacity = 36 // This should come from the fetched bus data
+    var selectedMode by remember { mutableIntStateOf(0) }
 
     val seats = remember {
         List(capacity) { index -> Seat(number = index + 1) }
@@ -56,9 +61,17 @@ fun BusSeatsScreen(
             BottomNavigationBar(
                 items = listOf(
                     BottomNavItem.PainterIcon(
-                        painter = painterResource(R.drawable.icon_log_out),
-                        label = stringResource(R.string.log_out_icon_text)
-                    )
+                        painter = painterResource(R.drawable.icon_backarrow),
+                        label = "Vista Buses",
+                        modifier = Modifier.clickable { selectedMode = 0 },
+                        onClick = onBusView
+                    ),
+                    BottomNavItem.PainterIcon(
+                        painter = painterResource(R.drawable.icon_user),
+                        label = "Reconocimiento Facial",
+                        modifier = Modifier.clickable { selectedMode = 0 },
+                        onClick = onNavigateToScan
+                    ),
                 )
             )
         }
@@ -161,11 +174,3 @@ fun SeatItem(
         )
     }
 }
-
-@Preview
-@Composable
-fun PreviewBusSeatsScreen() {
-    BusSeatsScreen(
-        busPlate = "XYZ-123"
-    )
-} 

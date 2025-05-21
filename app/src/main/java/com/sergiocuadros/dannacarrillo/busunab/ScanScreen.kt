@@ -48,7 +48,8 @@ import androidx.compose.ui.tooling.preview.Preview as ComposePreview
 @Composable
 fun ScanScreen(
     userName: String = "Conductor1",
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    onBusView: () -> Unit = {}
 ) {
     // Modes: 0 = Facial, 1 = QR
     var selectedMode by remember { mutableIntStateOf(0) }
@@ -71,17 +72,14 @@ fun ScanScreen(
                     BottomNavItem.PainterIcon(
                         painter = painterResource(R.drawable.icon_log_out),
                         label = "Volver al bus",
-                        modifier = Modifier.clickable { onBack() }
+                        modifier = Modifier.clickable { onBack() },
+                        onClick = onBusView
                     ),
                     BottomNavItem.PainterIcon(
                         painter = painterResource(R.drawable.icon_user),
                         label = "Reconocimiento Facial",
-                        modifier = Modifier.clickable { selectedMode = 0 }
-                    ),
-                    BottomNavItem.PainterIcon(
-                        painter = painterResource(R.drawable.icon_qr),
-                        label = "QR",
-                        modifier = Modifier.clickable { selectedMode = 1 }
+                        modifier = Modifier.clickable { selectedMode = 0 },
+                                onClick = onBusView
                     )
                 )
             )

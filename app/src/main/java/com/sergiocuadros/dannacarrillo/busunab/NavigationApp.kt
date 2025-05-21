@@ -90,6 +90,11 @@ fun NavigationApp() {
                     navController.navigate("login") {
                         popUpTo(0)
                     }
+                },
+                onStatsBus = {
+                    navController.navigate("admin_stats") {
+                        popUpTo(0)
+                    }
                 }
             )
         }
@@ -104,7 +109,8 @@ fun NavigationApp() {
                     navController.navigate("login") {
                         popUpTo(0)
                     }
-                }
+                },
+
             )
         }
         composable(
@@ -134,8 +140,42 @@ fun NavigationApp() {
             ScanScreen(
                 onBack = {
                     navController.popBackStack()
+                },
+                onBusView = {
+                    navController.navigate("bus_view") {
+                        popUpTo(0)
+                    }
                 }
             )
+
         }
+        composable(
+            route = "bus_seats/{plate}",
+            arguments = listOf(
+                navArgument("plate") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val plate = backStackEntry.arguments?.getString("plate") ?: ""
+            BusSeatsScreen(
+                busPlate = plate,
+                onNavigateToStats = {
+                    navController.navigate("admin_stats")
+                },
+                onLogout = {
+                    navController.navigate("login") {
+                        popUpTo(0)
+                    }
+                },
+                onBusView = {
+                    navController.navigate("bus_view") {
+                        popUpTo(0)
+                    }
+                },
+                onNavigateToScan = {
+                    navController.navigate("scan/$plate")
+                },
+            )
+        }
+
     }
 }

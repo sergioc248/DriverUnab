@@ -39,6 +39,8 @@ import com.sergiocuadros.dannacarrillo.busunab.models.Bus
 
 @Composable
 fun BusViewScreen(
+    onNavigateToStats: () -> Unit,
+    onLogout: () -> Unit,
     onBusClick: (String) -> Unit = { }
 ) {
     // Example bus list - in a real app, this would come from a ViewModel
@@ -63,7 +65,8 @@ fun BusViewScreen(
                     BottomNavItem.PainterIcon(
                         painter = painterResource(R.drawable.icon_log_out),
                         label = stringResource(R.string.log_out_icon_text),
-                        modifier = Modifier.graphicsLayer(scaleX = -1f)
+                        modifier = Modifier.graphicsLayer(scaleX = -1f),
+                        onClick = onLogout
                     )
                 )
             )
