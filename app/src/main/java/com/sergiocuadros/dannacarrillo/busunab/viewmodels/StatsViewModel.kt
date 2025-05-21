@@ -3,21 +3,24 @@ package com.sergiocuadros.dannacarrillo.busunab.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.sergiocuadros.dannacarrillo.busunab.models.PassengerFlowData
 import com.sergiocuadros.dannacarrillo.busunab.models.StopFrequency
-import com.sergiocuadros.dannacarrillo.busunab.repository.InterfaceStatsRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
+import com.sergiocuadros.dannacarrillo.busunab.repository.StatsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import javax.inject.Inject
+import android.util.Log
 
-@HiltViewModel
-class StatsViewModel @Inject constructor(
-    private val interfaceStatsRepository: InterfaceStatsRepository
+class StatsViewModel constructor(
 ) : ViewModel() {
+
+    // Create the repository instance internally
+    private val firestore = Firebase.firestore
+    private val statsRepository: StatsRepository = StatsRepository(firestore)
 
     private val _stopFrequencies = MutableStateFlow<List<StopFrequency>>(emptyList())
     val stopFrequencies: StateFlow<List<StopFrequency>> = _stopFrequencies
@@ -42,13 +45,13 @@ class StatsViewModel @Inject constructor(
 
             try {
                 // Get data for the last 7 days
-                val endDate = Timestamp.now()
+                val endDate = Timestamp.Companion.now()
                 val startDate = Timestamp(Calendar.getInstance().apply {
                     add(Calendar.DAY_OF_MONTH, -7)
                 }.time)
 
                 // Load stop frequencies
-                interfaceStatsRepository.getMostFrequentStops(
+                statsRepository.getMostFrequentStops(
                     limit = 5,
                     startDate = startDate,
                     endDate = endDate
@@ -59,7 +62,7 @@ class StatsViewModel @Inject constructor(
                 }
 
                 // Load passenger flow
-                interfaceStatsRepository.getPassengerFlow(
+                statsRepository.getPassengerFlow(
                     startDate = startDate,
                     endDate = endDate
                 ).catch { e ->
@@ -69,8 +72,10 @@ class StatsViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _error.value = "Error loading statistics: ${e.message}"
+                Log.e("StatsViewModel", "Error in loadStats: ", e)
             } finally {
                 _isLoading.value = false
+                Log.d("StatsViewModel", "loadStats finally block executed. isLoading set to false.")
             }
         }
     }
@@ -78,7 +83,7 @@ class StatsViewModel @Inject constructor(
     fun recordStopVisit(stopId: String, busId: String, passengerCount: Int) {
         viewModelScope.launch {
             try {
-                interfaceStatsRepository.recordStopVisit(stopId, busId, passengerCount)
+                statsRepository.recordStopVisit(stopId, busId, passengerCount)
             } catch (e: Exception) {
                 _error.value = "Error recording stop visit: ${e.message}"
             }
@@ -88,10 +93,10 @@ class StatsViewModel @Inject constructor(
     fun recordPassengerFlow(busId: String, hour: Int, passengerCount: Int) {
         viewModelScope.launch {
             try {
-                interfaceStatsRepository.recordPassengerFlow(busId, hour, passengerCount)
+                statsRepository.recordPassengerFlow(busId, hour, passengerCount)
             } catch (e: Exception) {
                 _error.value = "Error recording passenger flow: ${e.message}"
             }
         }
     }
-} 
+}

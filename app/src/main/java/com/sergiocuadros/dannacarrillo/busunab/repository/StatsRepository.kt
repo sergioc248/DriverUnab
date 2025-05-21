@@ -3,6 +3,7 @@ package com.sergiocuadros.dannacarrillo.busunab.repository
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.GeoPoint
 import com.sergiocuadros.dannacarrillo.busunab.models.HourlyData
 import com.sergiocuadros.dannacarrillo.busunab.models.PassengerFlow
 import com.sergiocuadros.dannacarrillo.busunab.models.PassengerFlowData
@@ -12,85 +13,79 @@ import com.sergiocuadros.dannacarrillo.busunab.models.StopVisit
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class StatsRepository @Inject constructor(
+class StatsRepository constructor(
     private val firestore: FirebaseFirestore
-) : InterfaceStatsRepository {
+) {
 
-    override fun getMostFrequentStops(
+    fun getMostFrequentStops(
         limit: Int,
         startDate: Timestamp,
         endDate: Timestamp
-    ): Flow<List<StopFrequency>> = callbackFlow {
-        val listener = firestore.collection("stops")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
+    ): Flow<List<StopFrequency>> = flow {
+        try {
+            val snapshot = firestore.collection("stops")
+                .get()
+                .await()
+
+            val stops = snapshot?.documents?.mapNotNull { doc ->
+                doc.toObject(Stop::class.java)
+            } ?: emptyList()
+
+            val stopFrequencies = stops.map { stop ->
+                val visitsInRange = stop.visits.filter { visit ->
+                    visit.timestamp >= startDate && visit.timestamp <= endDate
                 }
-
-                val stops = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject(Stop::class.java)
-                } ?: emptyList()
-
-                val stopFrequencies = stops.map { stop ->
-                    val visitsInRange = stop.visits.filter { visit ->
-                        visit.timestamp in startDate..endDate
-                    }
-                    StopFrequency(
-                        stopName = stop.name,
-                        frequency = visitsInRange.size
-                    )
-                }
-                    .sortedByDescending { it.frequency }
-                    .take(limit)
-
-                trySend(stopFrequencies)
+                StopFrequency(
+                    stopName = stop.name,
+                    frequency = visitsInRange.size
+                )
             }
+                .sortedByDescending { it.frequency }
+                .take(limit)
 
-        awaitClose { listener.remove() }
+            emit(stopFrequencies)
+        } catch (e: Exception) {
+            throw e
+        }
     }
 
-    override fun getPassengerFlow(
+    fun getPassengerFlow(
         startDate: Timestamp,
         endDate: Timestamp
-    ): Flow<List<PassengerFlowData>> = callbackFlow {
-        val listener = firestore.collection("passenger_flow")
-            .whereGreaterThanOrEqualTo("date", startDate)
-            .whereLessThanOrEqualTo("date", endDate)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
+    ): Flow<List<PassengerFlowData>> = flow {
+        try {
+            val snapshot = firestore.collection("passenger_flow")
+                .whereGreaterThanOrEqualTo("date", startDate)
+                .whereLessThanOrEqualTo("date", endDate)
+                .get()
+                .await()
+
+            val flows = snapshot?.documents?.mapNotNull { doc ->
+                doc.toObject(PassengerFlow::class.java)
+            } ?: emptyList()
+
+            // Aggregate hourly data
+            val hourlyData = flows.flatMap { it.hourlyData }
+                .groupBy { it.hour }
+                .map { (hour, data) ->
+                    PassengerFlowData(
+                        hour = hour,
+                        passengerCount = data.sumOf { it.passengerCount }
+                    )
                 }
+                .sortedBy { it.hour }
 
-                val flows = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject(PassengerFlow::class.java)
-                } ?: emptyList()
-
-                // Aggregate hourly data
-                val hourlyData = flows.flatMap { it.hourlyData }
-                    .groupBy { it.hour }
-                    .map { (hour, data) ->
-                        PassengerFlowData(
-                            hour = hour,
-                            passengerCount = data.map { it.passengerCount }.average().toInt()
-                        )
-                    }
-                    .sortedBy { it.hour }
-
-                trySend(hourlyData)
-            }
-
-        awaitClose { listener.remove() }
+            emit(hourlyData)
+        } catch (e: Exception) {
+            throw e
+        }
     }
 
-    override suspend fun recordStopVisit(
+    suspend fun recordStopVisit(
         stopId: String,
         busId: String,
         passengerCount: Int
@@ -107,7 +102,7 @@ class StatsRepository @Inject constructor(
             .await()
     }
 
-    override suspend fun recordPassengerFlow(
+    suspend fun recordPassengerFlow(
         busId: String,
         hour: Int,
         passengerCount: Int
@@ -149,6 +144,33 @@ class StatsRepository @Inject constructor(
             firestore.collection("passenger_flow")
                 .add(newFlow)
                 .await()
+        }
+    }
+
+    // New function to get all stops
+    fun getAllStops(): Flow<List<Stop>> = flow {
+        try {
+            val snapshot = firestore.collection("stops").get().await()
+            val stops = snapshot.documents.mapNotNull { it.toObject(Stop::class.java) }
+            emit(stops)
+        } catch (e: Exception) {
+            // Log.e("StatsRepository", "Error fetching all stops", e)
+            throw e // Re-throw the exception
+        }
+    }
+
+    suspend fun addStop(stopName: String, location: GeoPoint? = null): Result<Stop> {
+        return try {
+            val newStopRef = firestore.collection("stops").document() // Auto-generate ID
+            val stop = Stop(
+                id = newStopRef.id, 
+                name = stopName, 
+                location = location
+            )
+            newStopRef.set(stop).await()
+            Result.success(stop)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 } 

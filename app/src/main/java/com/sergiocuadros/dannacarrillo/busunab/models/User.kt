@@ -5,6 +5,7 @@ data class User(
     val email: String = "",
     val name: String = "",
     val role: UserRole = UserRole.DRIVER,
+    val assignedBuses: List<String> = emptyList()
 )
 
 enum class UserRole {

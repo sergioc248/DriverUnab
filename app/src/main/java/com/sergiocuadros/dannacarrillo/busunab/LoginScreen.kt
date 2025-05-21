@@ -46,6 +46,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.auth
+import android.util.Log
 
 @Composable
 fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit = {}) {
@@ -161,17 +162,22 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
 
             Button(
                 onClick = {
+                    Log.d("LoginScreen_DEBUG", "Login Button Clicked - Top of onClick") // VERY BASIC LOG
                     val isValidEmail: Boolean = validateEmail(inputEmail).first
                     val isValidPassword = validatePassword(inputPassword).first
                     emailError = validateEmail(inputEmail).second
                     passwordError = validatePassword(inputPassword).second
 
                     if (isValidEmail && isValidPassword) {
+                        Log.d("LoginScreen", "Attempting to sign in with email: $inputEmail")
                         auth.signInWithEmailAndPassword(inputEmail, inputPassword)
                             .addOnCompleteListener(activity) { task ->
+                                Log.d("LoginScreen", "signInWithEmailAndPassword onComplete. Successful: ${task.isSuccessful}")
                                 if (task.isSuccessful) {
+                                    Log.d("LoginScreen", "Login successful. Calling onSuccesfulLogin().")
                                     onSuccesfulLogin()
                                 } else {
+                                    Log.e("LoginScreen", "Login failed.", task.exception)
                                     loginError = when (task.exception) {
                                         is FirebaseAuthInvalidCredentialsException -> "Correo o Contraseña incorrecta"
                                         is FirebaseAuthInvalidUserException -> "No existe una cuenta con este correo"
@@ -194,11 +200,13 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
 
             TextButton(onClick = onClickRegister) {
                 Text(
-                    text = "¿Te olvidaste de tu contraseña?",
+                    text = "¿No tienes cuenta? Regístrate",
                     color = Color.White,
                     fontSize = 14.sp
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp)) // Space between the two text buttons
 
             Spacer(modifier = Modifier.height(40.dp)) // Espacio inferior para respiración
         }

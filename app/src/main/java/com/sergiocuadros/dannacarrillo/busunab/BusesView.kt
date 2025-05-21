@@ -20,6 +20,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -36,26 +39,43 @@ import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavigationBar
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.TopNavigationBar
 import androidx.compose.foundation.clickable
 import com.sergiocuadros.dannacarrillo.busunab.models.Bus
+import com.sergiocuadros.dannacarrillo.busunab.viewmodels.BusViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sergiocuadros.dannacarrillo.busunab.models.Stop
+import com.sergiocuadros.dannacarrillo.busunab.viewmodels.AuthViewModel
+import com.sergiocuadros.dannacarrillo.busunab.models.UserRole
+import com.sergiocuadros.dannacarrillo.busunab.viewmodels.CurrentUserState
 
 @Composable
 fun BusViewScreen(
     onLogout: () -> Unit,
-    onBusClick: (String) -> Unit = { }
+    onBusClick: (String) -> Unit = { },
+    busViewModel: BusViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
-    // Example bus list - in a real app, this would come from a ViewModel
-    val buses = listOf(
-        Bus("XYZ-123", "2", 36, "6:00 pm"),
-        Bus("ABC-456", "3", 36, "7:00 pm"),
-        Bus("DEF-789", "4", 36, "8:00 pm"),
-        Bus("GHI-012", "5", 36, "9:00 pm"),
-        Bus("JKL-345", "6", 36, "10:00 pm")
-    )
+    val buses by busViewModel.buses.collectAsState()
+    val isLoading by busViewModel.isLoading.collectAsState()
+    val error by busViewModel.error.collectAsState()
+    val allStops by busViewModel.allStops.collectAsState()
+    val currentUserState by authViewModel.currentUserData.collectAsState()
+
+    LaunchedEffect(currentUserState) {
+        (currentUserState as? CurrentUserState.Authenticated)?.user?.let { user ->
+            if (user.role == UserRole.DRIVER) {
+                busViewModel.loadBuses(currentUserId = user.id, isUserAdmin = false)
+            } else if (user.role == UserRole.ADMIN) {
+                // Admin should not typically be on this screen, but if so, load all.
+                busViewModel.loadBuses(currentUserId = null, isUserAdmin = true)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
+            val currentUserName = (currentUserState as? CurrentUserState.Authenticated)?.user?.name ?: "Usuario"
             TopNavigationBar(
                 headerTitle = "Bienvenido",
-                userName = "Conductor1"
+                userName = currentUserName
             )
         },
         bottomBar = {
@@ -100,14 +120,23 @@ fun BusViewScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                buses.forEach { bus ->
-                    BusCard(
-                        bus = bus,
-                        onBusClick = {
-                            onBusClick(bus.plate)
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
+                if (isLoading) {
+                    Text("Cargando buses...") // Show loading indicator
+                } else if (error != null) {
+                    Text("Error: $error") // Show error message
+                } else if (buses.isEmpty()) {
+                    Text("No hay buses disponibles.")
+                } else {
+                    buses.forEach { bus ->
+                        BusCard(
+                            bus = bus,
+                            onBusClick = {
+                                onBusClick(bus.plate)
+                            },
+                            busViewModel = busViewModel
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
                 }
             }
         }
@@ -117,8 +146,11 @@ fun BusViewScreen(
 @Composable
 fun BusCard(
     bus: Bus,
-    onBusClick: () -> Unit = {}
+    onBusClick: () -> Unit = {},
+    busViewModel: BusViewModel
 ) {
+    val allStops by busViewModel.allStops.collectAsState()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -146,17 +178,22 @@ fun BusCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
                 InfoColumnCentered("Placa", bus.plate)
-                InfoColumnCentered("Ruta", bus.route)
+                InfoColumnCentered(
+                    title = "Ruta",
+                    value = bus.route.mapNotNull { stopId ->
+                        allStops.find { it.id == stopId }?.name
+                    }.joinToString(", ")
+                )
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
                 InfoColumnCentered("Capac.", bus.capacity.toString())
                 InfoColumnCentered("Inicio", bus.startTime)
@@ -167,7 +204,7 @@ fun BusCard(
 
 @Composable
 fun InfoColumnCentered(title: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
         Text(
             text = title,
             fontWeight = FontWeight.Bold,
@@ -192,9 +229,4 @@ fun DividerLine() {
     )
 }
 
-@Preview
-@Composable
-fun PreviewBusScreen() {
-    BusViewScreen()
-}
 

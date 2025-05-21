@@ -82,6 +82,6 @@ dependencies {
     implementation(libs.accompanist.permissions)
 
     // ComposeCharts library
-    implementation(libs.compose.charts)
+    implementation("io.github.ehsannarmani:compose-charts:0.1.7")
 
 }

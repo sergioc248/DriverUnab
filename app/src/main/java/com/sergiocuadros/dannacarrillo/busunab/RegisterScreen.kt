@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,8 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +34,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,30 +52,55 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
+import com.sergiocuadros.dannacarrillo.busunab.validateEmail
+import com.sergiocuadros.dannacarrillo.busunab.validateName
+import com.sergiocuadros.dannacarrillo.busunab.validatePassword
+import com.sergiocuadros.dannacarrillo.busunab.validatePasswordConfirmation
+import com.sergiocuadros.dannacarrillo.busunab.models.UserRole
+import com.sergiocuadros.dannacarrillo.busunab.viewmodels.RegisterViewModel
+import com.sergiocuadros.dannacarrillo.busunab.viewmodels.RegistrationState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegisterScreen(onClickBack: () -> Unit = {}, onSuccessfulRegister: () -> Unit = {}) {
-    val auth = Firebase.auth
-    val db = Firebase.firestore
-    val activity = LocalView.current.context as Activity
+fun RegisterScreen(
+    onClickBack: () -> Unit = {},
+    onSuccessfulRegister: (UserRole) -> Unit = {}
+) {
+    val registerViewModel: RegisterViewModel = viewModel()
+    val registrationState by registerViewModel.registrationState.collectAsState()
 
     // ESTADOS
     var inputName by remember { mutableStateOf("") }
     var inputEmail by remember { mutableStateOf("") }
     var inputPassword by remember { mutableStateOf("") }
     var inputPasswordConfirmation by remember { mutableStateOf("") }
+    var isAdminUser by remember { mutableStateOf(false) }
 
     var registerError by remember { mutableStateOf("") }
     var emailError by remember { mutableStateOf("") }
     var nameError by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf("") }
     var passwordConfirmationError by remember { mutableStateOf("") }
+
+    LaunchedEffect(registrationState) {
+        when (val state = registrationState) {
+            is RegistrationState.Success -> {
+                onSuccessfulRegister(state.role)
+            }
+            is RegistrationState.Error -> {
+                registerError = state.message
+            }
+            else -> {
+                registerError = ""
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -242,6 +272,19 @@ fun RegisterScreen(onClickBack: () -> Unit = {}, onSuccessfulRegister: () -> Uni
                 )
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = isAdminUser,
+                    onCheckedChange = { isAdminUser = it }
+                )
+                Text(text = "Crear como Administrador")
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             if (registerError.isNotEmpty()) {
@@ -253,55 +296,54 @@ fun RegisterScreen(onClickBack: () -> Unit = {}, onSuccessfulRegister: () -> Uni
                         .padding(bottom = 8.dp)
                 )
             }
+
             Button(
                 onClick = {
-                    val isValidName: Boolean = validateName(inputName).first
-                    val isValidEmail: Boolean = validateEmail(inputEmail).first
-                    val isValidPassword = validatePassword(inputPassword).first
-                    val isValidConfirmPassword: Boolean =
-                        validatePasswordConfirmation(inputPassword, inputPasswordConfirmation).first
+                    // Reset previous errors
+                    nameError = ""
+                    emailError = ""
+                    passwordError = ""
+                    passwordConfirmationError = ""
+                    registerError = ""
 
-                    nameError = validateName(inputName).second
-                    emailError = validateEmail(inputEmail).second
-                    passwordError = validatePassword(inputPassword).second
-                    passwordConfirmationError = validatePasswordConfirmation(
-                        inputPassword,
-                        inputPasswordConfirmation
-                    ).second
+                    val nameValidation = validateName(inputName)
+                    val emailValidation = validateEmail(inputEmail)
+                    val passwordValidation = validatePassword(inputPassword)
+                    val passwordConfirmationValidation = validatePasswordConfirmation(inputPassword, inputPasswordConfirmation)
 
-                    if (isValidName && isValidEmail && isValidPassword && isValidConfirmPassword) {
-                        auth.createUserWithEmailAndPassword(inputEmail, inputPassword)
-                            .addOnCompleteListener(activity) { task ->
-                                if (task.isSuccessful) {
-                                    val user = auth.currentUser
-                                    user?.let {
-                                        val userDoc = hashMapOf(
-                                            "name" to inputName,
-                                            "email" to inputEmail,
-                                            "role" to "driver"
-                                        )
-                                        db.collection("users").document(it.uid).set(userDoc)
-                                    }
-                                    onSuccessfulRegister()
-                                } else {
-                                    registerError = when (task.exception) {
-                                        is FirebaseAuthInvalidCredentialsException -> "Correo inválido"
-                                        is FirebaseAuthUserCollisionException -> "Correo ya registrado"
-                                        else -> "Error al registrarse. Intenta de nuevo"
-                                    }
-                                }
-                            }
-                    } else {
-                        registerError = "Hubo un error en el registro"
+                    var isValid = true
+
+                    if (!nameValidation.first) {
+                        nameError = nameValidation.second
+                        isValid = false
+                    }
+                    if (!emailValidation.first) {
+                        emailError = emailValidation.second
+                        isValid = false
+                    }
+                    if (!passwordValidation.first) {
+                        passwordError = passwordValidation.second
+                        isValid = false
+                    }
+                    if (!passwordConfirmationValidation.first) {
+                        passwordConfirmationError = passwordConfirmationValidation.second
+                        isValid = false
                     }
 
-                }, modifier = Modifier
+                    if (isValid) {
+                        registerViewModel.registerUser(inputName, inputEmail, inputPassword, isAdminUser)
+                    }
+                },
+                modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9900))
+                enabled = registrationState != RegistrationState.Loading
             ) {
-                Text("Registrarse")
+                if (registrationState == RegistrationState.Loading) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Crear Cuenta")
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -314,10 +356,4 @@ fun RegisterScreen(onClickBack: () -> Unit = {}, onSuccessfulRegister: () -> Uni
             }
         }
     }
-}
-
-@Preview
-@Composable
-fun RegisterScreenPreview() {
-    //RegisterScreen()
 }

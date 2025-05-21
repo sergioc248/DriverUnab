@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -48,8 +49,9 @@ fun TopNavigationBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(TopBarHeight)
             .background(LightBlue)
+            .statusBarsPadding()
+            .height(TopBarHeight)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -60,10 +62,11 @@ fun TopNavigationBar(
             modifier = Modifier.height(iconHeight)
         )
         Text(
-            text = "$headerTitle,\n$userName",
+            text = "$headerTitle\n$userName",
             color = Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = textSize,
+            lineHeight = textSize * 1.2,
             modifier = Modifier.padding(start = 12.dp)
         )
     }
