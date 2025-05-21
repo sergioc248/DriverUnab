@@ -39,7 +39,6 @@ import com.sergiocuadros.dannacarrillo.busunab.models.Bus
 
 @Composable
 fun BusViewScreen(
-    onNavigateToStats: () -> Unit,
     onLogout: () -> Unit,
     onBusClick: (String) -> Unit = { }
 ) {

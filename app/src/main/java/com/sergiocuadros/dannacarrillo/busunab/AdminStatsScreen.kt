@@ -41,8 +41,8 @@ data class PassengerFlow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminStatsScreen(
-    onNavigateToStats: () -> Unit,
     onLogout: () -> Unit,
+    onNavigateToBusManagement: () -> Unit,
     viewModel: StatsViewModel = hiltViewModel()
 ) {
     val stopFrequencies by viewModel.stopFrequencies.collectAsState()
@@ -63,6 +63,11 @@ fun AdminStatsScreen(
                     painter = painterResource(R.drawable.icon_log_out),
                     label = stringResource(R.string.log_out_icon_text),
                     onClick = onLogout
+                ),
+                BottomNavItem.PainterIcon(
+                    painter = painterResource(R.drawable.icon_log_out),
+                    label = "Administracion del bus",
+                    onClick = onNavigateToBusManagement
                 )
             ))
         }
@@ -184,10 +189,4 @@ fun AdminStatsScreen(
             }
         }
     }
-}
-
-@Preview
-@Composable
-fun PreviewStatsScreen() {
-    AdminStatsScreen()
 }

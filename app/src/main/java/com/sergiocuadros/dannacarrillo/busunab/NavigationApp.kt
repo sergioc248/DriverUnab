@@ -91,11 +91,6 @@ fun NavigationApp() {
                         popUpTo(0)
                     }
                 },
-                onStatsBus = {
-                    navController.navigate("admin_stats") {
-                        popUpTo(0)
-                    }
-                }
             )
         }
 

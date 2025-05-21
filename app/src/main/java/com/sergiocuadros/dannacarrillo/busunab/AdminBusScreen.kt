@@ -50,7 +50,6 @@ private val DarkBlue  = Color(0xFF009FE3)
 fun BusManagementScreen(
     onNavigateToStats: () -> Unit,
     onLogout: () -> Unit,
-    onStatsBus: () ->Unit
 ) {
     val busList = listOf(
         BusData("1", "QWE-321", "16", "6:00 am"),
@@ -76,7 +75,7 @@ fun BusManagementScreen(
                 BottomNavItem.PainterIcon(
                     painter = painterResource(R.drawable.icon_log_out),
                     label = "estadisticas",
-                    onClick = onStatsBus
+                    onClick = onNavigateToStats
                 ),
 
 
