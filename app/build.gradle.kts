@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.firebase.firestore)
+    implementation(libs.androidx.exifinterface)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -83,5 +84,7 @@ dependencies {
 
     // ComposeCharts library
     implementation("io.github.ehsannarmani:compose-charts:0.1.7")
+
+    implementation(libs.androidx.exifinterface)
 
 }

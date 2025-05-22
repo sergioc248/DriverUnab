@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
+import android.util.Log
 
 class StatsRepository constructor(
     private val firestore: FirebaseFirestore
@@ -89,17 +90,23 @@ class StatsRepository constructor(
         stopId: String,
         busId: String,
         passengerCount: Int
-    ) {
-        val visit = StopVisit(
-            timestamp = Timestamp.now(),
-            busId = busId,
-            passengerCount = passengerCount
-        )
+    ): Boolean {
+        return try {
+            val visit = StopVisit(
+                timestamp = Timestamp.now(),
+                busId = busId,
+                passengerCount = passengerCount
+            )
 
-        firestore.collection("stops")
-            .document(stopId)
-            .update("visits", FieldValue.arrayUnion(visit))
-            .await()
+            firestore.collection("stops")
+                .document(stopId)
+                .update("visits", FieldValue.arrayUnion(visit))
+                .await()
+            true
+        } catch (e: Exception) {
+            Log.e("StatsRepository", "Error recording stop visit for stop $stopId, bus $busId: ${e.message}", e)
+            false
+        }
     }
 
     suspend fun recordPassengerFlow(

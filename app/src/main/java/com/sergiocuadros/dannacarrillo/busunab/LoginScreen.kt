@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
@@ -47,12 +48,20 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.auth
 import android.util.Log
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 
 @Composable
 fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit = {}) {
 
     val auth = Firebase.auth
     val activity = LocalView.current.context as Activity
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     // ESTADOS
     var inputEmail by remember { mutableStateOf("") }
@@ -61,33 +70,78 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
     var emailError by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf("") }
 
+    fun handleLogin() {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+        Log.d("LoginScreen_DEBUG", "Login Button Clicked - Top of onClick")
+        val isValidEmail: Boolean = validateEmail(inputEmail).first
+        val isValidPassword = validatePassword(inputPassword).first
+        emailError = validateEmail(inputEmail).second
+        passwordError = validatePassword(inputPassword).second
+
+        if (isValidEmail && isValidPassword) {
+            Log.d("LoginScreen", "Attempting to sign in with email: $inputEmail")
+            auth.signInWithEmailAndPassword(inputEmail, inputPassword)
+                .addOnCompleteListener(activity) { task ->
+                    Log.d("LoginScreen", "signInWithEmailAndPassword onComplete. Successful: ${task.isSuccessful}")
+                    if (task.isSuccessful) {
+                        Log.d("LoginScreen", "Login successful. Calling onSuccesfulLogin().")
+                        onSuccesfulLogin()
+                    } else {
+                        Log.e("LoginScreen", "Login failed.", task.exception)
+                        loginError = when (task.exception) {
+                            is FirebaseAuthInvalidCredentialsException -> "Correo o Contraseña incorrecta"
+                            is FirebaseAuthInvalidUserException -> "No existe una cuenta con este correo"
+                            else -> "Error al iniciar sesión. Intenta de nuevo"
+                        }
+                    }
+                }
+        } else {
+            if (!isValidEmail && !isValidPassword) {
+                loginError = "Correo y contraseña inválidos."
+            } else if (!isValidEmail) {
+                loginError = "Formato de correo inválido."
+            } else {
+                loginError = "Formato de contraseña inválido."
+            }
+        }
+    }
+
     Scaffold(
         containerColor = Color(0xFF00B2F3) // Fondo azul brillante
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    }
+                )
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .fillMaxSize()
                 .padding(horizontal = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            Spacer(modifier = Modifier.height(80.dp)) // Espacio arriba del logo
+            Spacer(modifier = Modifier.height(80.dp))
 
             Image(
                 painter = painterResource(R.drawable.logo_unab_blanco),
                 contentDescription = "Logo Unab",
-                modifier = Modifier.size(200.dp) // Logo más grande
+                modifier = Modifier.size(200.dp)
             )
 
-            Spacer(modifier = Modifier.height(60.dp)) // Debajo del logo
+            Spacer(modifier = Modifier.height(60.dp))
 
             Text(
                 text = "INICIO DE SESIÓN",
                 fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold, // Más grueso
+                fontWeight = FontWeight.ExtraBold,
                 color = Color.White
             )
 
@@ -99,16 +153,16 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
                 color = Color.White
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(26.dp))
 
             OutlinedTextField(
                 value = inputEmail,
-                onValueChange = { inputEmail = it },
+                onValueChange = { inputEmail = it; loginError = "" },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(8.dp),
-                placeholder = { Text("Email", color = Color.Gray) },
+                placeholder = { Text("Email", color = Color(0xFF666666)) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
@@ -119,20 +173,22 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
                     autoCorrect = false,
-                    keyboardType = KeyboardType.Email
-                )
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
+                singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(12.dp)) // Inputs más juntos
+            Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
                 value = inputPassword,
-                onValueChange = { inputPassword = it },
+                onValueChange = { inputPassword = it; loginError = "" },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(8.dp),
-                placeholder = { Text("Password", color = Color.Gray) },
+                placeholder = { Text("Password", color = Color(0xFF666666)) },
                 visualTransformation = PasswordVisualTransformation(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
@@ -144,49 +200,31 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
                     autoCorrect = false,
-                    keyboardType = KeyboardType.Password
-                )
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { handleLogin() }
+                ),
+                singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(64.dp)) // Más espacio antes del botón (estaba en 24.dp)
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (loginError.isNotEmpty()) {
                 Text(
                     loginError,
-                    color = Color.Red,
+                    color = Color.Red.copy(alpha = 0.8f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
                 )
+            } else {
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
             Button(
-                onClick = {
-                    Log.d("LoginScreen_DEBUG", "Login Button Clicked - Top of onClick") // VERY BASIC LOG
-                    val isValidEmail: Boolean = validateEmail(inputEmail).first
-                    val isValidPassword = validatePassword(inputPassword).first
-                    emailError = validateEmail(inputEmail).second
-                    passwordError = validatePassword(inputPassword).second
-
-                    if (isValidEmail && isValidPassword) {
-                        Log.d("LoginScreen", "Attempting to sign in with email: $inputEmail")
-                        auth.signInWithEmailAndPassword(inputEmail, inputPassword)
-                            .addOnCompleteListener(activity) { task ->
-                                Log.d("LoginScreen", "signInWithEmailAndPassword onComplete. Successful: ${task.isSuccessful}")
-                                if (task.isSuccessful) {
-                                    Log.d("LoginScreen", "Login successful. Calling onSuccesfulLogin().")
-                                    onSuccesfulLogin()
-                                } else {
-                                    Log.e("LoginScreen", "Login failed.", task.exception)
-                                    loginError = when (task.exception) {
-                                        is FirebaseAuthInvalidCredentialsException -> "Correo o Contraseña incorrecta"
-                                        is FirebaseAuthInvalidUserException -> "No existe una cuenta con este correo"
-                                        else -> "Error al iniciar sesión. Intenta de nuevo"
-                                    }
-                                }
-                            }
-                    }
-                },
+                onClick = { handleLogin() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
@@ -196,7 +234,7 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
                 Text("Iniciar Sesión", color = Color.White)
             }
 
-            Spacer(modifier = Modifier.height(16.dp)) // Justo debajo del botón
+            Spacer(modifier = Modifier.height(16.dp))
 
             TextButton(onClick = onClickRegister) {
                 Text(
@@ -206,9 +244,7 @@ fun LoginScreen(onClickRegister: () -> Unit = {}, onSuccesfulLogin: () -> Unit =
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp)) // Space between the two text buttons
-
-            Spacer(modifier = Modifier.height(40.dp)) // Espacio inferior para respiración
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }

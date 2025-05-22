@@ -30,6 +30,7 @@ import ir.ehsannarmani.compose_charts.models.Bars
 import ir.ehsannarmani.compose_charts.models.DrawStyle
 import ir.ehsannarmani.compose_charts.models.LabelProperties
 import ir.ehsannarmani.compose_charts.models.Line
+import androidx.compose.foundation.horizontalScroll
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,7 +139,6 @@ fun AdminStatsScreen(
                         }
                         ColumnChart(
                             modifier = Modifier
-                                .fillMaxWidth()
                                 .height(200.dp),
                             data = columnChartData
                         )
@@ -181,7 +181,6 @@ fun AdminStatsScreen(
                         }
                         LineChart(
                             modifier = Modifier
-                                .fillMaxWidth()
                                 .height(250.dp), // Increased height slightly for labels
                             data = lineChartData,
                             animationMode = AnimationMode.Together(),

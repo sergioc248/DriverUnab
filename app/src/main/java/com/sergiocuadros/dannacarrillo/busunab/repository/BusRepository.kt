@@ -74,7 +74,7 @@ class BusRepository {
 
     fun getSeatsForBus(busPlate: String, onResult: (List<SeatDocument>) -> Unit) {
         busesRef.document(busPlate).collection("seats")
-            .orderBy("seatNumberStr") // Assuming seatNumberStr is stored as string like "1", "2", etc.
+            .orderBy("number") // Order by seat number
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("BusRepository", "Error fetching seats for bus $busPlate", error)
@@ -90,9 +90,9 @@ class BusRepository {
             }
     }
 
-    fun updateSeatOccupationInBus(busPlate: String, seatNumber: Int, isOccupied: Boolean, onComplete: (Boolean) -> Unit) {
+    fun updateSeatOccupationInBus(busPlate: String, seatNumber: Int, occupied: Boolean, onComplete: (Boolean) -> Unit) {
         busesRef.document(busPlate).collection("seats").document(seatNumber.toString())
-            .update("isOccupied", isOccupied)
+            .update("occupied", occupied)
             .addOnSuccessListener { onComplete(true) }
             .addOnFailureListener {
                 Log.e("BusRepository", "Error updating seat $seatNumber for bus $busPlate", it)
@@ -109,7 +109,7 @@ class BusRepository {
                 val seatDocRef = seatsCollection.document(i.toString())
                 // Only create if it doesn't exist, or overwrite if you want to reset all
                 // For simplicity, this overwrites/creates.
-                batch.set(seatDocRef, SeatDocument(seatNumberStr = i.toString(), isOccupied = false))
+                batch.set(seatDocRef, SeatDocument(seatNumberStr = i.toString(), occupied = false))
             }
             batch.commit().await()
             true
@@ -118,42 +118,6 @@ class BusRepository {
             false
         }
     }
-
-    // Remove old seat operations
-    /*
-    fun updateSeatStatus(plate: String, seatNumber: Int, isOccupied: Boolean) {
-        seatsRef.document("${plate}_${seatNumber}")
-            .set(mapOf(
-                "plate" to plate,
-                "seatNumber" to seatNumber,
-                "isOccupied" to isOccupied
-            ))
-    }
-
-    fun getBusSeats(plate: String, onSeatsFetched: (List<Seat>) -> Unit) {
-        seatsRef.whereEqualTo("plate", plate)
-            .addSnapshotListener { snapshot, _ ->
-                if (snapshot != null) {
-                    val seats = snapshot.documents.mapNotNull { doc ->
-                        val seatNumber = doc.getLong("seatNumber")?.toInt() ?: return@mapNotNull null
-                        val isOccupied = doc.getBoolean("isOccupied") ?: false
-                        Seat(number = seatNumber, isOccupied = isOccupied)
-                    }
-                    onSeatsFetched(seats)
-                }
-            }
-    }
-
-    fun clearBusSeats(plate: String) {
-        seatsRef.whereEqualTo("plate", plate)
-            .get()
-            .addOnSuccessListener { documents ->
-                for (document in documents) {
-                    document.reference.delete()
-                }
-            }
-    }
-    */
 
     fun getBusByPlate(plate: String, onBusFetched: (Bus?) -> Unit) {
         busesRef.document(plate).get()
@@ -169,5 +133,32 @@ class BusRepository {
                 // Log error or handle as needed
                 onBusFetched(null)
             }
+    }
+
+    suspend fun getSeatsForBusOnce(busPlate: String): List<SeatDocument> {
+        return try {
+            val snapshot = busesRef.document(busPlate).collection("seats")
+                .orderBy("number") // Consistent ordering
+                .get()
+                .await()
+            snapshot.toObjects(SeatDocument::class.java)
+        } catch (e: Exception) {
+            Log.e("BusRepository", "Error fetching seats once for bus $busPlate", e)
+            emptyList() // Or throw e to be handled by ViewModel
+        }
+    }
+
+    suspend fun getBusByPlateSuspend(plate: String): Bus? {
+        return try {
+            val document = busesRef.document(plate).get().await()
+            if (document != null && document.exists()) {
+                document.toObject(Bus::class.java)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("BusRepository", "Error fetching bus by plate suspend: $plate", e)
+            null // Or throw e
+        }
     }
 }

@@ -30,6 +30,7 @@ import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavItem
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.BottomNavigationBar
 import com.sergiocuadros.dannacarrillo.busunab.ui.components.TopNavigationBar
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import com.sergiocuadros.dannacarrillo.busunab.models.SeatDocument
@@ -42,7 +43,7 @@ import com.sergiocuadros.dannacarrillo.busunab.models.Bus
 // Seat data class for UI purposes, derived from SeatDocument and capacity
 data class DisplaySeat(
     val number: Int,
-    var isOccupied: Boolean = false,
+    var occupied: Boolean = false,
     var isSelectedForAction: Boolean = false // UI state for confirming action
 )
 
@@ -75,7 +76,7 @@ fun BusSeatsScreen(
             val seatDoc = busSeatsState.find { it.number == seatNumber }
             DisplaySeat(
                 number = seatNumber,
-                isOccupied = seatDoc?.isOccupied ?: false
+                occupied = seatDoc?.occupied ?: false
             )
         }
     }
@@ -178,7 +179,7 @@ fun BusSeatsScreen(
                                 fontSize = 16.sp,
                                 color = Color.Gray
                             )
-                            val occupiedCount = displaySeats.count { it.isOccupied }
+                            val occupiedCount = displaySeats.count { it.occupied }
                             Text(
                                 text = "Ocupados: $occupiedCount",
                                 fontSize = 16.sp,
@@ -218,12 +219,12 @@ fun BusSeatsScreen(
                                 seat = seat,
                                 onClick = {
                                     if (isInDeoccupyMode) {
-                                        if (seat.isOccupied) {
+                                        if (seat.occupied) {
                                             busViewModel.deOccupySeat(bus.plate, seat.number, driverId)
                                         }
                                         // else: do nothing if trying to de-occupy an empty seat
                                     } else {
-                                        if (!seat.isOccupied) {
+                                        if (!seat.occupied) {
                                            onNavigateToScan(seat.number)
                                         }
                                     }
@@ -245,8 +246,13 @@ fun SeatItem(
     onClick: () -> Unit
 ) {
     val tintColor = when {
-        seat.isOccupied -> Color(0xFF004B8D)  // Dark blue
+        seat.occupied -> Color(0xFF004B8D)  // Dark blue
         else -> Color(0xFF00AEEF)  // Blue like top bar
+    }
+
+    val personIconColor = when {
+        seat.occupied -> Color(0xFF0066B3)  // Lighter blue for person icon
+        else -> Color(0xFF00AEEF)  // Same as unoccupied
     }
 
     Box(
@@ -276,5 +282,17 @@ fun SeatItem(
             contentScale = ContentScale.Fit,
             colorFilter = ColorFilter.tint(tintColor)
         )
+
+        if (seat.occupied) {
+            Icon(
+                imageVector = Icons.Filled.Person,
+                contentDescription = "Occupied",
+                tint = personIconColor,
+                modifier = Modifier
+                    .size(40.dp)
+                    .align(Alignment.Center)
+                    .offset(y = (-13).dp) // Move the icon up using offset instead of padding
+            )
+        }
     }
 }

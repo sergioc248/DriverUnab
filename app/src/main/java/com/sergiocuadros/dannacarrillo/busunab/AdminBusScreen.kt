@@ -53,6 +53,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.MaterialTheme
 import android.widget.Toast
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.List
@@ -81,6 +82,8 @@ import com.sergiocuadros.dannacarrillo.busunab.viewmodels.AuthViewModel
 import com.sergiocuadros.dannacarrillo.busunab.viewmodels.CurrentUserState
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 
 private val LightBlue = Color(0xFFE5F7FF)
 private val DarkBlue  = Color(0xFF009FE3)
@@ -102,9 +105,22 @@ fun BusManagementScreen(
     var newBusPlate by remember { mutableStateOf("") }
     var newBusRoute by remember { mutableStateOf("") }
     var newBusCapacity by remember { mutableStateOf("") }
-    var newBusStartTime by remember { mutableStateOf("") }
     var addBusError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+
+    // States for newBusStartTime controlled input (24-hour format)
+    val hours24 = (0..23).map { it.toString().padStart(2, '0') } // "00", "01", ..., "23"
+    val minutesFull = (0..59).map { it.toString().padStart(2, '0') } // "00", "01", ..., "59"
+    // For simplicity in dropdown, let's stick to 15-min intervals for now, can be changed to minutesFull if needed
+    val minutesIntervals = listOf("00", "15", "30", "45") 
+
+    var selectedHour24 by remember { mutableStateOf(hours24.first()) } // Default to "00"
+    var selectedMinuteInterval by remember { mutableStateOf(minutesIntervals.first()) } // Default to "00"
+    // var selectedAmPm by remember { mutableStateOf(amPmOptions.first()) } // Removed
+
+    var hourDropdownExpanded by remember { mutableStateOf(false) }
+    var minuteDropdownExpanded by remember { mutableStateOf(false) }
+    // var amPmDropdownExpanded by remember { mutableStateOf(false) } // Removed
 
     // State for Delete Bus Dialog
     var busToDeletePlate by remember { mutableStateOf<String?>(null) }
@@ -287,7 +303,6 @@ fun BusManagementScreen(
                                         newBusPlate = bus.plate // Plate likely not editable, but shown
                                         selectedStopIdsForNewBus = bus.route
                                         newBusCapacity = bus.capacity.toString()
-                                        newBusStartTime = bus.startTime
                                         selectedDriverIdForForm = bus.driverId
                                         addBusError = null // Clear any previous add/edit errors
                                         showEditBusDialog = true
@@ -312,22 +327,23 @@ fun BusManagementScreen(
         if (showAddBusDialog) {
             AlertDialog(
                 onDismissRequest = { 
-                    showAddBusDialog = false 
-                    // Reset add form states
-                    newBusPlate = ""
-                    selectedStopIdsForNewBus = emptyList()
-                    newBusCapacity = ""
-                    newBusStartTime = ""
-                    selectedDriverIdForForm = null
-                    addBusError = null
+//                    showAddBusDialog = false
+//                    // Reset add form states
+//                    newBusPlate = ""
+//                    selectedStopIdsForNewBus = emptyList()
+//                    newBusCapacity = ""
+//                    selectedHour24 = hours24.first()      // Reset 24h hour
+//                    selectedMinuteInterval = minutesIntervals.first() // Reset interval minute
+//                    selectedDriverIdForForm = null
+//                    addBusError = null
                 },
                 title = { Text("Agregar Nuevo Bus") },
                 text = {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) { // Make dialog content scrollable
                         TextField(
                             value = newBusPlate,
-                            onValueChange = { newBusPlate = it },
-                            label = { Text("Placa") },
+                            onValueChange = { newBusPlate = it.uppercase() }, // Auto uppercase
+                            label = { Text("Placa (AAA-123)") },
                             singleLine = true
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -349,12 +365,73 @@ fun BusManagementScreen(
                             singleLine = true
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        TextField(
-                            value = newBusStartTime,
-                            onValueChange = { newBusStartTime = it },
-                            label = { Text("Hora de Inicio (e.g., 6:00 am)") },
-                            singleLine = true
-                        )
+                        // Controlled Start Time Input
+                        Text("Hora de Inicio:", style = MaterialTheme.typography.labelMedium)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Hour Dropdown (00-23)
+                            ExposedDropdownMenuBox(
+                                expanded = hourDropdownExpanded,
+                                onExpandedChange = { hourDropdownExpanded = !hourDropdownExpanded },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                TextField(
+                                    modifier = Modifier.menuAnchor(),
+                                    readOnly = true,
+                                    value = selectedHour24,
+                                    onValueChange = {}, 
+                                    label = { Text("Hora") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = hourDropdownExpanded) }
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = hourDropdownExpanded,
+                                    onDismissRequest = { hourDropdownExpanded = false }
+                                ) {
+                                    hours24.forEach { hour ->
+                                        DropdownMenuItem(
+                                            text = { Text(hour) },
+                                            onClick = {
+                                                selectedHour24 = hour
+                                                hourDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            Text(":", fontSize = 24.sp, modifier = Modifier.padding(horizontal = 4.dp)) // Separator
+                            // Minute Dropdown (00, 15, 30, 45 - or use minutesFull for 00-59)
+                            ExposedDropdownMenuBox(
+                                expanded = minuteDropdownExpanded,
+                                onExpandedChange = { minuteDropdownExpanded = !minuteDropdownExpanded },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                TextField(
+                                    modifier = Modifier.menuAnchor(),
+                                    readOnly = true,
+                                    value = selectedMinuteInterval,
+                                    onValueChange = {},
+                                    label = { Text("Minuto") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = minuteDropdownExpanded) }
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = minuteDropdownExpanded,
+                                    onDismissRequest = { minuteDropdownExpanded = false }
+                                ) {
+                                    minutesIntervals.forEach { minute -> // Use minutesIntervals or minutesFull
+                                        DropdownMenuItem(
+                                            text = { Text(minute) },
+                                            onClick = {
+                                                selectedMinuteInterval = minute
+                                                minuteDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(8.dp))
                         // Driver Selector Dropdown
                         ExposedDropdownMenuBox(
@@ -402,8 +479,15 @@ fun BusManagementScreen(
                     TextButton(
                         onClick = {
                             val capacityInt = newBusCapacity.toIntOrNull()
-                            if (newBusPlate.isBlank() || selectedStopIdsForNewBus.isEmpty() || capacityInt == null || newBusStartTime.isBlank()) {
-                                addBusError = "Todos los campos son requeridos, incluyendo paradas."
+                            val plateRegex = Regex("^[A-Z]{3}-[0-9]{3}$")
+                            if (!plateRegex.matches(newBusPlate)) {
+                                addBusError = "Formato de placa inválido. Debe ser AAA-123."
+                                return@TextButton
+                            }
+                            val constructedStartTime = "$selectedHour24:$selectedMinuteInterval"
+
+                            if (newBusPlate.isBlank() || selectedStopIdsForNewBus.isEmpty() || capacityInt == null) {
+                                addBusError = "Todos los campos son requeridos, incluyendo paradas y hora."
                                 return@TextButton
                             }
                             if (capacityInt <= 0) {
@@ -415,7 +499,7 @@ fun BusManagementScreen(
                                 plate = newBusPlate.uppercase(),
                                 route = selectedStopIdsForNewBus, 
                                 capacity = capacityInt,
-                                startTime = newBusStartTime,
+                                startTime = constructedStartTime, // Use constructed time
                                 driverId = selectedDriverIdForForm ?: "", // Assign selected driver
                                 isActive = true 
                             )
@@ -424,13 +508,6 @@ fun BusManagementScreen(
                                     showAddBusDialog = false
                                     // Clear fields are now part of onDismissRequest
                                     Toast.makeText(context, "Bus agregado: ${newBus.plate}", Toast.LENGTH_SHORT).show()
-                                    // Initialize seats for the new bus
-                                    coroutineScope.launch { // ViewModel functions can be called from coroutineScope
-                                        val initSuccess = busViewModel.initializeSeatsForBus(newBus.plate, newBus.capacity)
-                                        if (!initSuccess) {
-                                            Toast.makeText(context, "Error inicializando asientos para ${newBus.plate}", Toast.LENGTH_LONG).show()
-                                        }
-                                    }
                                 } else {
                                     addBusError = errorMsg ?: "Error al agregar bus."
                                 }
@@ -592,18 +669,38 @@ fun BusManagementScreen(
             LaunchedEffect(busToEdit) {
                 if (busToEdit != null) {
                     selectedDriverIdForForm = busToEdit?.driverId?.takeIf { it.isNotBlank() }
-                    // pre-fill other form states is already done when setting busToEdit
+                    // Pre-fill time selectors for Edit Dialog from busToEdit.startTime (HH:MM)
+                    val timeParts = busToEdit?.startTime?.split(":")
+                    if (timeParts != null && timeParts.size == 2) {
+                        val hourPart = timeParts[0].padStart(2, '0')
+                        val minutePart = timeParts[1].padStart(2,'0') // Ensure minute part is also 2 digits for matching
+                        if (hours24.contains(hourPart)) {
+                            selectedHour24 = hourPart
+                        }
+                        // Find closest interval or exact match for minutes
+                        if (minutesIntervals.contains(minutePart)) {
+                            selectedMinuteInterval = minutePart
+                        } else {
+                           // Optional: find closest if not exact match, or default
+                           // For now, if not an exact interval, defaults to the first one
+                           selectedMinuteInterval = minutesIntervals.first()
+                        }
+                    } else {
+                        // Default if parsing fails
+                        selectedHour24 = hours24.first()
+                        selectedMinuteInterval = minutesIntervals.first()
+                    }
                 }
             }
             AlertDialog(
                 onDismissRequest = { 
                     showEditBusDialog = false 
                     busToEdit = null
-                    newBusPlate = "" 
                     selectedStopIdsForNewBus = emptyList() 
                     newBusCapacity = "" 
-                    newBusStartTime = "" 
-                    selectedDriverIdForForm = null // Reset driver selection
+                    selectedHour24 = hours24.first()
+                    selectedMinuteInterval = minutesIntervals.first()
+                    selectedDriverIdForForm = null
                     addBusError = null
                 },
                 title = { Text("Editar Bus: ${currentEditingBus.plate}") }, 
@@ -629,12 +726,73 @@ fun BusManagementScreen(
                             singleLine = true
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        TextField(
-                            value = newBusStartTime, 
-                            onValueChange = { newBusStartTime = it },
-                            label = { Text("Hora de Inicio (e.g., 6:00 am)") },
-                            singleLine = true
-                        )
+                        // Controlled Start Time Input for Edit Dialog
+                        Text("Hora de Inicio:", style = MaterialTheme.typography.labelMedium)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Hour Dropdown (00-23)
+                            ExposedDropdownMenuBox(
+                                expanded = hourDropdownExpanded,
+                                onExpandedChange = { hourDropdownExpanded = !hourDropdownExpanded },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                TextField(
+                                    modifier = Modifier.menuAnchor(),
+                                    readOnly = true,
+                                    value = selectedHour24,
+                                    onValueChange = {},
+                                    label = { Text("Hora (00-23)") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = hourDropdownExpanded) }
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = hourDropdownExpanded,
+                                    onDismissRequest = { hourDropdownExpanded = false }
+                                ) {
+                                    hours24.forEach { hour ->
+                                        DropdownMenuItem(
+                                            text = { Text(hour) },
+                                            onClick = {
+                                                selectedHour24 = hour
+                                                hourDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            Text(":", fontSize = 24.sp, modifier = Modifier.padding(horizontal = 4.dp)) // Separator
+                            // Minute Dropdown (00, 15, 30, 45 - or use minutesFull for 00-59)
+                            ExposedDropdownMenuBox(
+                                expanded = minuteDropdownExpanded,
+                                onExpandedChange = { minuteDropdownExpanded = !minuteDropdownExpanded },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                TextField(
+                                    modifier = Modifier.menuAnchor(),
+                                    readOnly = true,
+                                    value = selectedMinuteInterval,
+                                    onValueChange = {},
+                                    label = { Text("Minuto") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = minuteDropdownExpanded) }
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = minuteDropdownExpanded,
+                                    onDismissRequest = { minuteDropdownExpanded = false }
+                                ) {
+                                    minutesIntervals.forEach { minute -> // Use minutesIntervals or minutesFull
+                                        DropdownMenuItem(
+                                            text = { Text(minute) },
+                                            onClick = {
+                                                selectedMinuteInterval = minute
+                                                minuteDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(8.dp))
                         // Driver Selector Dropdown for Edit
                         ExposedDropdownMenuBox(
@@ -682,7 +840,10 @@ fun BusManagementScreen(
                     TextButton(
                         onClick = {
                             val capacityInt = newBusCapacity.toIntOrNull()
-                            if (selectedStopIdsForNewBus.isEmpty() || capacityInt == null || newBusStartTime.isBlank()) {
+                            // Plate is not validated here as it's not being edited
+                            val constructedStartTime = "$selectedHour24:$selectedMinuteInterval"
+
+                            if (selectedStopIdsForNewBus.isEmpty() || capacityInt == null) {
                                 addBusError = "Paradas, capacidad y hora de inicio son requeridos."
                                 return@TextButton
                             }
@@ -694,7 +855,7 @@ fun BusManagementScreen(
                             val updatedBus = currentEditingBus.copy(
                                 route = selectedStopIdsForNewBus,
                                 capacity = capacityInt,
-                                startTime = newBusStartTime,
+                                startTime = constructedStartTime, // Use constructed time
                                 driverId = selectedDriverIdForForm ?: "" // Update driverId
                             )
                             busViewModel.updateBus(updatedBus) { success, errorMsg -> 
@@ -723,10 +884,10 @@ fun BusManagementScreen(
                         showEditBusDialog = false
                         busToEdit = null
                         // Clear form fields
-                        newBusPlate = "" 
                         selectedStopIdsForNewBus = emptyList() 
                         newBusCapacity = "" 
-                        newBusStartTime = "" 
+                        selectedHour24 = hours24.first()
+                        selectedMinuteInterval = minutesIntervals.first()
                         selectedDriverIdForForm = null
                         addBusError = null
                     }) {
@@ -757,13 +918,21 @@ fun TableRow(cells: List<String>, isHeader: Boolean = false, actionIcon: @Compos
                     .fillMaxHeight()
                     .padding(4.dp)
             ) {
-                Text(
-                    text = cell,
-                    fontSize = 14.sp,
-                    color = cellColor,
-                    fontWeight = fontWeight,
-                    modifier = Modifier.align(Alignment.CenterStart).padding(8.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .fillMaxWidth()
+                ) {
+                    Text(
+                        text = cell.takeIf { it.isNotBlank() } ?: (if (isHeader) "" else "-"),
+                        fontSize = 14.sp,
+                        color = cellColor,
+                        fontWeight = fontWeight,
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        maxLines = 1
+                    )
+                }
             }
 
             // Draw vertical divider (except after last column)
@@ -793,7 +962,6 @@ fun TableRow(cells: List<String>, isHeader: Boolean = false, actionIcon: @Compos
         color = DarkBlue
     )
 }
-
 
 @Composable
 fun TableHeader(title: String, modifier: Modifier) {

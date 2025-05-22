@@ -28,6 +28,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -45,7 +46,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -65,6 +69,9 @@ import com.sergiocuadros.dannacarrillo.busunab.validatePasswordConfirmation
 import com.sergiocuadros.dannacarrillo.busunab.models.UserRole
 import com.sergiocuadros.dannacarrillo.busunab.viewmodels.RegisterViewModel
 import com.sergiocuadros.dannacarrillo.busunab.viewmodels.RegistrationState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.interaction.MutableInteractionSource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +81,8 @@ fun RegisterScreen(
 ) {
     val registerViewModel: RegisterViewModel = viewModel()
     val registrationState by registerViewModel.registrationState.collectAsState()
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     // ESTADOS
     var inputName by remember { mutableStateOf("") }
@@ -82,11 +91,15 @@ fun RegisterScreen(
     var inputPasswordConfirmation by remember { mutableStateOf("") }
     var isAdminUser by remember { mutableStateOf(false) }
 
-    var registerError by remember { mutableStateOf("") }
-    var emailError by remember { mutableStateOf("") }
-    var nameError by remember { mutableStateOf("") }
-    var passwordError by remember { mutableStateOf("") }
-    var passwordConfirmationError by remember { mutableStateOf("") }
+    var generalError by remember { mutableStateOf("") } // Consolidated error
+
+    // Individual field errors are now primarily for highlighting fields if needed,
+    // but generalError will show the main message.
+    var nameFieldError by remember { mutableStateOf("") }
+    var emailFieldError by remember { mutableStateOf("") }
+    var passwordFieldError by remember { mutableStateOf("") }
+    var passwordConfirmationFieldError by remember { mutableStateOf("") }
+
 
     LaunchedEffect(registrationState) {
         when (val state = registrationState) {
@@ -94,11 +107,53 @@ fun RegisterScreen(
                 onSuccessfulRegister(state.role)
             }
             is RegistrationState.Error -> {
-                registerError = state.message
+                generalError = state.message // Use generalError for ViewModel errors
             }
             else -> {
-                registerError = ""
+                generalError = ""
             }
+        }
+    }
+
+    fun handleRegistration() {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+
+        // Reset previous errors
+        nameFieldError = ""
+        emailFieldError = ""
+        passwordFieldError = ""
+        passwordConfirmationFieldError = ""
+        generalError = ""
+
+        val nameValidation = validateName(inputName)
+        val emailValidation = validateEmail(inputEmail)
+        val passwordValidation = validatePassword(inputPassword)
+        val passwordConfirmationValidation = validatePasswordConfirmation(inputPassword, inputPasswordConfirmation)
+
+        var isValid = true
+
+        if (!nameValidation.first) {
+            nameFieldError = nameValidation.second
+            isValid = false
+        }
+        if (!emailValidation.first) {
+            emailFieldError = emailValidation.second
+            isValid = false
+        }
+        if (!passwordValidation.first) {
+            passwordFieldError = passwordValidation.second
+            isValid = false
+        }
+        if (!passwordConfirmationValidation.first) {
+            passwordConfirmationFieldError = passwordConfirmationValidation.second
+            isValid = false
+        }
+
+        if (isValid) {
+            registerViewModel.registerUser(inputName, inputEmail, inputPassword, isAdminUser)
+        } else {
+            generalError = "Por favor, corrige los errores en el formulario."
         }
     }
 
@@ -108,10 +163,9 @@ fun RegisterScreen(
                 title = {},
                 navigationIcon = {
                     IconButton(
-                        onClick =
-                            onClickBack
+                        onClick = onClickBack
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
@@ -120,12 +174,20 @@ fun RegisterScreen(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    }
+                )
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .fillMaxSize()
                 .padding(horizontal = 30.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center // Keep centered if content is short
         ) {
             Image(
                 imageVector = Icons.Default.Person,
@@ -147,38 +209,36 @@ fun RegisterScreen(
 
             OutlinedTextField(
                 value = inputName,
-                onValueChange = { inputName = it },
+                onValueChange = { inputName = it; generalError = ""; nameFieldError = "" },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Person,
-                        contentDescription = "Email",
+                        contentDescription = "Nombre",
                         tint = Color(0xFFFF9900)
                     )
                 },
-                label = {
-                    Text(text = "Nombre Completo")
-                },
+                label = { Text("Nombre Completo") },
                 shape = RoundedCornerShape(12.dp),
+                isError = nameFieldError.isNotEmpty(),
                 supportingText = {
-                    if (nameError.isNotEmpty()) {
-                        Text(
-                            text = nameError,
-                            color = Color.Red
-                        )
+                    if (nameFieldError.isNotEmpty()) {
+                        Text(nameFieldError, color = MaterialTheme.colorScheme.error)
                     }
                 },
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Words,
                     autoCorrectEnabled = false,
-                )
+                    imeAction = ImeAction.Next
+                ),
+                singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // Reduced spacer
 
             OutlinedTextField(
                 value = inputEmail,
-                onValueChange = { inputEmail = it },
+                onValueChange = { inputEmail = it; generalError = ""; emailFieldError = "" },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = {
                     Icon(
@@ -187,89 +247,86 @@ fun RegisterScreen(
                         tint = Color(0xFFFF9900)
                     )
                 },
-                label = {
-                    Text(text = "Correo Electrónico")
-                },
+                label = { Text("Correo Electrónico") },
                 shape = RoundedCornerShape(12.dp),
+                isError = emailFieldError.isNotEmpty(),
                 supportingText = {
-                    if (emailError.isNotEmpty()) {
-                        Text(
-                            text = emailError,
-                            color = Color.Red
-                        )
+                    if (emailFieldError.isNotEmpty()) {
+                        Text(emailFieldError, color = MaterialTheme.colorScheme.error)
                     }
                 },
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
                     autoCorrectEnabled = false,
-                    keyboardType = KeyboardType.Email
-                )
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
+                singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // Reduced spacer
 
             OutlinedTextField(
                 value = inputPassword,
-                onValueChange = { inputPassword = it },
+                onValueChange = { inputPassword = it; generalError = ""; passwordFieldError = "" },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Lock,
-                        contentDescription = "Email",
+                        contentDescription = "Contraseña",
                         tint = Color(0xFFFF9900)
                     )
                 },
-                label = {
-                    Text(text = "Contraseña")
-                },
+                label = { Text("Contraseña") },
                 shape = RoundedCornerShape(12.dp),
+                isError = passwordFieldError.isNotEmpty(),
                 supportingText = {
-                    if (passwordError.isNotEmpty()) {
-                        Text(
-                            text = passwordError,
-                            color = Color.Red
-                        )
+                    if (passwordFieldError.isNotEmpty()) {
+                        Text(passwordFieldError, color = MaterialTheme.colorScheme.error)
                     }
                 },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
                     autoCorrectEnabled = false,
-                    keyboardType = KeyboardType.Password
-                )
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Next
+                ),
+                singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp)) // Reduced spacer
 
             OutlinedTextField(
                 value = inputPasswordConfirmation,
-                onValueChange = { inputPasswordConfirmation = it },
+                onValueChange = { inputPasswordConfirmation = it; generalError = ""; passwordConfirmationFieldError = "" },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Lock,
-                        contentDescription = "Email",
+                        contentDescription = "Confirmar Contraseña",
                         tint = Color(0xFFFF9900)
                     )
                 },
-                label = {
-                    Text(text = "Confirmar Contraseña")
-                },
+                label = { Text("Confirmar Contraseña") },
                 shape = RoundedCornerShape(12.dp),
+                isError = passwordConfirmationFieldError.isNotEmpty(),
                 supportingText = {
-                    if (passwordConfirmationError.isNotEmpty()) {
-                        Text(
-                            text = passwordConfirmationError,
-                            color = Color.Red
-                        )
+                    if (passwordConfirmationFieldError.isNotEmpty()) {
+                        Text(passwordConfirmationFieldError, color = MaterialTheme.colorScheme.error)
                     }
                 },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
                     autoCorrectEnabled = false,
-                    keyboardType = KeyboardType.Password
-                )
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done // Done for the last field
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { handleRegistration() }
+                ),
+                singleLine = true
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -287,53 +344,21 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            if (registerError.isNotEmpty()) {
+            if (generalError.isNotEmpty()) {
                 Text(
-                    registerError,
-                    color = Color.Red,
+                    generalError,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
                 )
+            } else if (registrationState != RegistrationState.Loading) {
+                 // Keep space consistent if no error and not loading
+                Spacer(modifier = Modifier.height(32.dp)) // Approx height of error text + padding
             }
 
             Button(
-                onClick = {
-                    // Reset previous errors
-                    nameError = ""
-                    emailError = ""
-                    passwordError = ""
-                    passwordConfirmationError = ""
-                    registerError = ""
-
-                    val nameValidation = validateName(inputName)
-                    val emailValidation = validateEmail(inputEmail)
-                    val passwordValidation = validatePassword(inputPassword)
-                    val passwordConfirmationValidation = validatePasswordConfirmation(inputPassword, inputPasswordConfirmation)
-
-                    var isValid = true
-
-                    if (!nameValidation.first) {
-                        nameError = nameValidation.second
-                        isValid = false
-                    }
-                    if (!emailValidation.first) {
-                        emailError = emailValidation.second
-                        isValid = false
-                    }
-                    if (!passwordValidation.first) {
-                        passwordError = passwordValidation.second
-                        isValid = false
-                    }
-                    if (!passwordConfirmationValidation.first) {
-                        passwordConfirmationError = passwordConfirmationValidation.second
-                        isValid = false
-                    }
-
-                    if (isValid) {
-                        registerViewModel.registerUser(inputName, inputEmail, inputPassword, isAdminUser)
-                    }
-                },
+                onClick = { handleRegistration() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
@@ -348,7 +373,7 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            TextButton(onClick = {}) {
+            TextButton(onClick = onClickBack) { // Changed to onClickBack to avoid confusion
                 Text(
                     text = "¿Ya tienes una cuenta? Inicia Sesión",
                     color = Color(0xFFFF9900)

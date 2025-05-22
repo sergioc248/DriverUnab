@@ -6,5 +6,6 @@ data class Bus(
     val driverId: String = "",
     val isActive: Boolean = true,
     val route: List<String> = emptyList(),
-    val startTime: String = ""
+    val startTime: String = "",
+    val seats: List<SeatDocument> = emptyList()
 ) 

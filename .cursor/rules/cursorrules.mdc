@@ -19,6 +19,7 @@ alwaysApply: true
  - Kotlin as programming language
  - The ViewModels as Architecture Components for communication between the UI and the database layer 
  - Firestore for the database
+ - CameraX for handling the camera functionality
 
 ## Applicaton: 
  The idea of the app is having an app for drivers of my university (unab) where they can log in, click on their bus to manage it, and add or remove students with face scan (checking if they belong on the university).
